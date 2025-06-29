@@ -96,7 +96,10 @@ class PurrifyEngine:
     async def scan_system(
         self,
         quick_mode: bool = False,
-        detailed_mode: bool = False
+        detailed_mode: bool = False,
+        include_duplicates: bool = True,
+        include_photos: bool = True,
+        include_large_files: bool = True
     ) -> ScanResult:
         """
         Perform comprehensive system scan for optimization opportunities.
@@ -104,32 +107,50 @@ class PurrifyEngine:
         Args:
             quick_mode: Enable quick scan mode for faster results
             detailed_mode: Enable detailed scan with file analysis
+            include_duplicates: Scan for duplicate files
+            include_photos: Analyze photos for optimization
+            include_large_files: Identify large files
             
         Returns:
             ScanResult object containing scan findings
         """
-        logger.info("Starting system scan...")
+        logger.info("Starting enhanced system scan...")
         start_time = time.time()
         
         try:
-            # Perform system scan
+            # Perform enhanced system scan
             scan_data = await self.scanner.scan_system(
                 quick_mode=quick_mode,
-                detailed_mode=detailed_mode
+                detailed_mode=detailed_mode,
+                include_duplicates=include_duplicates,
+                include_photos=include_photos,
+                include_large_files=include_large_files
             )
             
-            # Convert dictionary result to ScanResult object
+            # Convert enhanced dictionary result to ScanResult object
             scan_result = ScanResult(
-                total_files_scanned=scan_data.get("total_files_scanned", 0),
-                cache_files_found=scan_data.get("cache_files_found", 0),
-                temp_files_found=scan_data.get("temp_files_found", 0),
-                log_files_found=scan_data.get("log_files_found", 0),
-                large_files_found=scan_data.get("large_files_found", 0),
-                potential_space_savings=scan_data.get("potential_space_savings", 0),
+                total_files_scanned=scan_data.get("total_files", 0),
+                cache_files_found=sum(
+                    cat_data.get("count", 0) 
+                    for cat, cat_data in scan_data.get("categories", {}).items() 
+                    if "cache" in cat
+                ),
+                temp_files_found=scan_data.get("categories", {}).get("temp", {}).get("count", 0),
+                log_files_found=scan_data.get("categories", {}).get("log", {}).get("count", 0),
+                large_files_found=scan_data.get("large_files", {}).get("count", 0),
+                potential_space_savings=scan_data.get("potential_savings", 0),
                 scan_duration=scan_data.get("scan_duration", 0.0),
-                scan_errors=scan_data.get("scan_errors", []),
-                file_details=scan_data.get("file_details", [])
+                scan_errors=scan_data.get("errors", []),
+                file_details=scan_data.get("categories", {})
             )
+            
+            # Add enhanced data to file_details
+            scan_result.file_details.update({
+                "duplicates": scan_data.get("duplicates", {}),
+                "photos": scan_data.get("photos", {}),
+                "large_files": scan_data.get("large_files", {}),
+                "old_files": scan_data.get("old_files", {})
+            })
             
             # Apply AI analysis if enabled
             if self.config.ai.enable_ml_analysis:
@@ -139,15 +160,17 @@ class PurrifyEngine:
             scan_result.scan_duration = time.time() - start_time
             self.last_scan_result = scan_result
             
-            # Log results
-            logger.info(f"System scan completed in {scan_result.scan_duration:.2f}s")
-            logger.info(f"Found {scan_result.cache_files_found} cache files")
+            # Log enhanced results
+            logger.info(f"Enhanced system scan completed in {scan_result.scan_duration:.2f}s")
+            logger.info(f"Found {scan_result.total_files_scanned} files")
+            logger.info(f"Found {scan_data.get('duplicates', {}).get('groups', 0)} duplicate groups")
+            logger.info(f"Analyzed {scan_data.get('photos', {}).get('count', 0)} photos")
             logger.info(f"Potential space savings: {self._format_bytes(scan_result.potential_space_savings)}")
             
             return scan_result
             
         except Exception as e:
-            logger.error(f"System scan failed: {e}")
+            logger.error(f"Enhanced system scan failed: {e}")
             error_result = ScanResult(
                 scan_errors=[str(e)],
                 scan_duration=time.time() - start_time
@@ -331,15 +354,15 @@ class PurrifyEngine:
             return None
     
     def display_scan_results(self, scan_result: ScanResult, output_file: Optional[str] = None):
-        """Display scan results in a user-friendly format."""
+        """Display enhanced scan results in a user-friendly format."""
         from rich.console import Console
         from rich.table import Table
         from rich.panel import Panel
         
         console = Console()
         
-        # Create results table
-        table = Table(title="🔍 System Scan Results")
+        # Create main results table
+        table = Table(title="🔍 Enhanced System Scan Results")
         table.add_column("Metric", style="cyan")
         table.add_column("Value", style="green")
         
@@ -352,6 +375,86 @@ class PurrifyEngine:
         table.add_row("Scan Duration", f"{scan_result.scan_duration:.2f}s")
         
         console.print(table)
+        
+        # Display enhanced results if available
+        if hasattr(scan_result, 'file_details') and scan_result.file_details:
+            # Duplicates section
+            duplicates = scan_result.file_details.get("duplicates", {})
+            if duplicates.get("groups", 0) > 0:
+                dup_table = Table(title="🔄 Duplicate Files Found")
+                dup_table.add_column("Metric", style="cyan")
+                dup_table.add_column("Value", style="green")
+                
+                dup_table.add_row("Duplicate Groups", f"{duplicates.get('groups', 0)}")
+                dup_table.add_row("Total Duplicate Size", self._format_bytes(duplicates.get('total_size', 0)))
+                dup_table.add_row("Potential Savings", self._format_bytes(duplicates.get('potential_savings', 0)))
+                
+                console.print(dup_table)
+                
+                # Show some duplicate groups
+                if duplicates.get('groups_detail'):
+                    console.print(Panel(
+                        f"Found {len(duplicates['groups_detail'])} duplicate groups\n"
+                        f"Largest group: {duplicates['groups_detail'][0].get('count', 0)} files "
+                        f"({self._format_bytes(duplicates['groups_detail'][0].get('total_size', 0))})",
+                        title="📋 Duplicate Summary",
+                        border_style="yellow"
+                    ))
+            
+            # Photos section
+            photos = scan_result.file_details.get("photos", {})
+            if photos.get("count", 0) > 0:
+                photo_table = Table(title="📸 Photo Analysis")
+                photo_table.add_column("Metric", style="cyan")
+                photo_table.add_column("Value", style="green")
+                
+                photo_table.add_row("Photos Found", f"{photos.get('count', 0)}")
+                photo_table.add_row("Total Photo Size", self._format_bytes(photos.get('total_size', 0)))
+                photo_table.add_row("Potential Savings", self._format_bytes(photos.get('potential_savings', 0)))
+                
+                console.print(photo_table)
+                
+                # Show photo optimization opportunities
+                if photos.get('photos_detail'):
+                    console.print(Panel(
+                        f"Analyzed {len(photos['photos_detail'])} photos for optimization\n"
+                        f"Average compression potential: {photos.get('potential_savings', 0) / max(photos.get('count', 1), 1) / 1024 / 1024:.1f} MB per photo",
+                        title="🎨 Photo Optimization",
+                        border_style="magenta"
+                    ))
+            
+            # Large files section
+            large_files = scan_result.file_details.get("large_files", {})
+            if large_files.get("count", 0) > 0:
+                large_table = Table(title="📁 Large Files")
+                large_table.add_column("Metric", style="cyan")
+                large_table.add_column("Value", style="green")
+                
+                large_table.add_row("Large Files Found", f"{large_files.get('count', 0)}")
+                large_table.add_row("Total Large File Size", self._format_bytes(large_files.get('total_size', 0)))
+                
+                console.print(large_table)
+                
+                # Show some large files
+                if large_files.get('files'):
+                    console.print(Panel(
+                        f"Largest file: {self._format_bytes(large_files['files'][0].get('size', 0))}\n"
+                        f"File type: {large_files['files'][0].get('file_type', 'Unknown')}",
+                        title="📋 Large File Summary",
+                        border_style="red"
+                    ))
+            
+            # Old files section
+            old_files = scan_result.file_details.get("old_files", {})
+            if old_files.get("count", 0) > 0:
+                old_table = Table(title="📅 Old Files")
+                old_table.add_column("Metric", style="cyan")
+                old_table.add_column("Value", style="green")
+                
+                old_table.add_row("Old Files Found", f"{old_files.get('count', 0)}")
+                old_table.add_row("Total Old File Size", self._format_bytes(old_files.get('total_size', 0)))
+                
+                console.print(old_table)
         
         # Display errors if any
         if scan_result.scan_errors:

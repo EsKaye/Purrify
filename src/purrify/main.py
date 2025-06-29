@@ -55,32 +55,43 @@ def cli(ctx, verbose: bool, config: Optional[str]):
 @cli.command()
 @click.option("--quick", "-q", is_flag=True, help="Quick scan mode")
 @click.option("--detailed", "-d", is_flag=True, help="Detailed scan with file analysis")
+@click.option("--duplicates", is_flag=True, help="Scan for duplicate files")
+@click.option("--photos", is_flag=True, help="Analyze photos for optimization")
+@click.option("--large-files", is_flag=True, help="Identify large files")
 @click.option("--output", "-o", type=click.Path(), help="Output scan results to file")
 @click.pass_context
-def scan(ctx, quick: bool, detailed: bool, output: Optional[str]):
+def scan(ctx, quick: bool, detailed: bool, duplicates: bool, photos: bool, large_files: bool, output: Optional[str]):
     """
     🔍 Scan system for optimization opportunities
     
-    Analyzes your system to identify caches, temporary files,
-    and optimization opportunities.
+    Analyzes your system to identify caches, temporary files, duplicates,
+    photos, and optimization opportunities.
     """
     config = ctx.obj["config"]
     engine = PurrifyEngine(config)
     
-    click.echo("🔍 Starting system scan...")
+    click.echo("🔍 Starting enhanced system scan...")
     
     try:
-        # Run system scan
+        # Determine scan options
+        include_duplicates = duplicates or (not quick and not detailed)
+        include_photos = photos or (not quick and not detailed)
+        include_large_files = large_files or (not quick and not detailed)
+        
+        # Run enhanced system scan
         scan_results = asyncio.run(engine.scan_system(
             quick_mode=quick,
-            detailed_mode=detailed
+            detailed_mode=detailed,
+            include_duplicates=include_duplicates,
+            include_photos=include_photos,
+            include_large_files=include_large_files
         ))
         
         # Display results
         engine.display_scan_results(scan_results, output_file=output)
         
     except Exception as e:
-        click.echo(f"❌ Scan failed: {e}", err=True)
+        click.echo(f"❌ Enhanced scan failed: {e}", err=True)
         sys.exit(1)
 
 
