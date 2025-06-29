@@ -19,6 +19,7 @@ Purrify is a cross-platform system optimization utility that combines powerful A
 
 ### 🔧 **Powerful System Optimization**
 - **AI-Driven Analysis**: Intelligent scanning and optimization recommendations
+- **Enhanced Scanning**: Duplicate detection, photo analysis, large file identification
 - **Safe Cleaning**: Preview mode and intelligent file categorization
 - **Performance Optimization**: Real-time system monitoring and optimization
 - **Cross-Platform**: Works seamlessly on macOS and Windows
@@ -28,6 +29,7 @@ Purrify is a cross-platform system optimization utility that combines powerful A
 - **Comprehensive Logging**: Detailed operation tracking and error reporting
 - **Configuration Management**: Flexible settings for different use cases
 - **CLI & GUI**: Both command-line and graphical interfaces available
+- **Deep Scanning**: Advanced duplicate detection with MD5 hashing
 
 ## 🚀 Quick Start
 
@@ -95,8 +97,13 @@ purrify gui
 # Quick system scan
 purrify scan --quick
 
-# Full system analysis
+# Full system analysis with enhanced features
 purrify scan --detailed
+
+# Scan for specific optimization opportunities
+purrify scan --duplicates    # Find duplicate files
+purrify scan --photos        # Analyze photos for optimization
+purrify scan --large-files   # Identify large files
 
 # Safe cleaning mode
 purrify clean --safe
