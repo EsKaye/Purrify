@@ -70,6 +70,12 @@ class OptimizationConfig:
     launch_agents_optimization: bool = True  # macOS only
     background_processes: bool = True
     power_optimization: bool = True
+    # Windows 11 specific optimizations
+    windows_11_optimizations: bool = True
+    wsl_optimization: bool = False
+    microsoft_store_optimization: bool = False
+    windows_terminal_optimization: bool = False
+    cloud_integration_optimization: bool = True
 
 
 @dataclass
@@ -315,20 +321,48 @@ class Config:
             "C:\\Program Files\\",
             "C:\\Program Files (x86)\\",
             "C:\\Users\\*\\Documents\\",
-            "C:\\Users\\*\\Desktop\\"
+            "C:\\Users\\*\\Desktop\\",
+            "C:\\Users\\*\\OneDrive\\"  # Protect OneDrive files
         ])
         
         self.security.blacklist_paths.extend([
             "C:\\Windows\\",
             "C:\\Windows\\System32\\",
             "C:\\Windows\\SysWOW64\\",
-            "C:\\ProgramData\\"
+            "C:\\ProgramData\\",
+            "C:\\Windows\\WinSxS\\",  # Windows component store
+            "C:\\Windows\\System32\\config\\"  # Registry files
         ])
         
         # Disable macOS-specific optimizations
         self.optimization.launch_agents_optimization = False
         
+        # Windows 11 specific settings
+        if hasattr(self, 'platform') and self.platform.get("is_windows_11", False):
+            self._apply_windows_11_settings()
+        
         logger.info("Applied Windows-specific configuration")
+    
+    def _apply_windows_11_settings(self):
+        """Apply Windows 11 specific configuration settings."""
+        logger.info("Detected Windows 11 - applying specific optimizations")
+        
+        # Add Windows 11 specific whitelist paths
+        self.security.whitelist_paths.extend([
+            "C:\\Program Files\\WindowsApps\\",  # Microsoft Store apps
+            "C:\\Users\\*\\AppData\\Local\\Packages\\",  # UWP app data
+            "C:\\Users\\*\\AppData\\Local\\Microsoft\\Windows\\Explorer\\",  # Explorer settings
+            "C:\\Users\\*\\AppData\\Local\\Microsoft\\Windows\\Shell\\"  # Shell settings
+        ])
+        
+        # Add Windows 11 specific blacklist paths
+        self.security.blacklist_paths.extend([
+            "C:\\Windows\\System32\\winevt\\Logs\\",  # Event logs (be careful)
+            "C:\\Windows\\System32\\config\\systemprofile\\",  # System profile
+            "C:\\ProgramData\\Microsoft\\Windows Defender\\"  # Defender files
+        ])
+        
+        logger.info("Applied Windows 11 specific configuration")
     
     def get(self, key: str, default: Any = None) -> Any:
         """

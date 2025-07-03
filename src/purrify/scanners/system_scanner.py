@@ -213,6 +213,89 @@ class SystemScanner:
                 error_msg = f"Failed to scan system cache {path}: {e}"
                 logger.warning(error_msg)
                 self.scan_errors.append(error_msg)
+        
+        # Windows 11 specific cache scanning
+        if self.platform.get("is_windows_11", False):
+            await self._scan_windows_11_caches()
+    
+    async def _scan_windows_11_caches(self):
+        """Scan Windows 11 specific cache directories."""
+        logger.debug("Scanning Windows 11 specific caches...")
+        
+        # WSL caches
+        wsl_paths = self.system_paths.get("wsl_caches", [])
+        for path in wsl_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory(
+                        path=path,
+                        category="wsl_cache",
+                        max_depth=4 if not self.config.scanning.quick_mode else 2
+                    )
+                except Exception as e:
+                    error_msg = f"Failed to scan WSL cache {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg)
+        
+        # Microsoft Store caches
+        store_paths = self.system_paths.get("microsoft_store_caches", [])
+        for path in store_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory(
+                        path=path,
+                        category="microsoft_store_cache",
+                        max_depth=3 if not self.config.scanning.quick_mode else 1
+                    )
+                except Exception as e:
+                    error_msg = f"Failed to scan Microsoft Store cache {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg)
+        
+        # Windows Security caches
+        security_paths = self.system_paths.get("windows_security_caches", [])
+        for path in security_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory(
+                        path=path,
+                        category="windows_security_cache",
+                        max_depth=3 if not self.config.scanning.quick_mode else 1
+                    )
+                except Exception as e:
+                    error_msg = f"Failed to scan Windows Security cache {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg)
+        
+        # Windows Search caches
+        search_paths = self.system_paths.get("windows_search_caches", [])
+        for path in search_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory(
+                        path=path,
+                        category="windows_search_cache",
+                        max_depth=3 if not self.config.scanning.quick_mode else 1
+                    )
+                except Exception as e:
+                    error_msg = f"Failed to scan Windows Search cache {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg)
+        
+        # Cloud integration caches
+        cloud_paths = self.system_paths.get("cloud_integration_caches", [])
+        for path in cloud_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory(
+                        path=path,
+                        category="cloud_integration_cache",
+                        max_depth=4 if not self.config.scanning.quick_mode else 2
+                    )
+                except Exception as e:
+                    error_msg = f"Failed to scan cloud integration cache {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg)
     
     async def _scan_user_caches(self):
         """Scan user cache directories."""

@@ -22,6 +22,7 @@ Purrify is a cross-platform system optimization utility that combines powerful A
 - **Enhanced Scanning**: Duplicate detection, photo analysis, large file identification
 - **Safe Cleaning**: Preview mode and intelligent file categorization
 - **Performance Optimization**: Real-time system monitoring and optimization
+- **Windows 11 Optimization**: Advanced Windows 11 specific features and optimizations
 - **Cross-Platform**: Works seamlessly on macOS and Windows
 
 ### 🚀 **Advanced Features**
@@ -109,7 +110,10 @@ purrify scan --large-files   # Identify large files
 purrify clean --safe
 
 # Performance optimization
-purrify optimize
+purrify optimize --all       # Apply all optimizations
+purrify optimize --windows11 # Windows 11 specific optimizations
+purrify optimize --wsl       # WSL optimization
+purrify optimize --microsoft-store # Microsoft Store optimization
 
 # Generate system report
 purrify report

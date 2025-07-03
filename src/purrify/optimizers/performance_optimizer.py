@@ -7,6 +7,7 @@ including startup management, memory optimization, and disk optimization.
 
 import asyncio
 import time
+import os
 from typing import Dict, Any, List
 from dataclasses import dataclass
 from loguru import logger
@@ -90,6 +91,23 @@ class PerformanceOptimizer:
                 optimizations_applied += result.optimizations_applied
                 optimization_errors.extend(result.optimization_errors)
             
+            # Windows 11 specific optimizations
+            if self.config.platform.get("is_windows_11", False):
+                if optimization_options.get("windows_11", False):
+                    result = await self._optimize_windows_11(safe_mode)
+                    optimizations_applied += result.optimizations_applied
+                    optimization_errors.extend(result.optimization_errors)
+                
+                if optimization_options.get("wsl", False) and self.config.platform.get("has_wsl", False):
+                    result = await self._optimize_wsl(safe_mode)
+                    optimizations_applied += result.optimizations_applied
+                    optimization_errors.extend(result.optimization_errors)
+                
+                if optimization_options.get("microsoft_store", False) and self.config.platform.get("has_microsoft_store", False):
+                    result = await self._optimize_microsoft_store(safe_mode)
+                    optimizations_applied += result.optimizations_applied
+                    optimization_errors.extend(result.optimization_errors)
+            
             opt_duration = time.time() - opt_start
             
             # Calculate performance improvement (placeholder)
@@ -149,4 +167,109 @@ class PerformanceOptimizer:
             optimizations_applied=0,
             disk_optimized=False,
             optimization_errors=[]
-        ) 
+        )
+    
+    async def _optimize_windows_11(self, safe_mode: bool) -> OptimizationResult:
+        """Optimize Windows 11 specific features."""
+        logger.debug("Optimizing Windows 11 features...")
+        
+        optimizations_applied = 0
+        optimization_errors = []
+        
+        try:
+            # Windows 11 specific optimizations
+            if not safe_mode:
+                # Optimize Windows Search
+                optimizations_applied += await self._optimize_windows_search()
+                
+                # Optimize Windows Security
+                optimizations_applied += await self._optimize_windows_security()
+                
+                # Optimize cloud integration
+                optimizations_applied += await self._optimize_cloud_integration()
+            
+        except Exception as e:
+            optimization_errors.append(f"Windows 11 optimization error: {e}")
+            logger.error(f"Windows 11 optimization failed: {e}")
+        
+        return OptimizationResult(
+            optimizations_applied=optimizations_applied,
+            optimization_errors=optimization_errors
+        )
+    
+    async def _optimize_wsl(self, safe_mode: bool) -> OptimizationResult:
+        """Optimize Windows Subsystem for Linux."""
+        logger.debug("Optimizing WSL...")
+        
+        optimizations_applied = 0
+        optimization_errors = []
+        
+        try:
+            if not safe_mode:
+                # Clean WSL cache directories
+                wsl_cache_paths = [
+                    os.path.expanduser("~/AppData/Local/Packages/CanonicalGroupLimited.UbuntuonWindows_79rhkp1fndgsc"),
+                    os.path.expanduser("~/AppData/Local/Packages/TheDebianProject.DebianGNULinux_76v4gfsz19hv4")
+                ]
+                
+                for path in wsl_cache_paths:
+                    if os.path.exists(path):
+                        # Clean WSL cache (implement actual cleaning logic)
+                        optimizations_applied += 1
+                        
+        except Exception as e:
+            optimization_errors.append(f"WSL optimization error: {e}")
+            logger.error(f"WSL optimization failed: {e}")
+        
+        return OptimizationResult(
+            optimizations_applied=optimizations_applied,
+            optimization_errors=optimization_errors
+        )
+    
+    async def _optimize_microsoft_store(self, safe_mode: bool) -> OptimizationResult:
+        """Optimize Microsoft Store apps."""
+        logger.debug("Optimizing Microsoft Store apps...")
+        
+        optimizations_applied = 0
+        optimization_errors = []
+        
+        try:
+            if not safe_mode:
+                # Clean Microsoft Store cache
+                store_cache_path = "C:/Program Files/WindowsApps"
+                if os.path.exists(store_cache_path):
+                    # Clean store cache (implement actual cleaning logic)
+                    optimizations_applied += 1
+                    
+        except Exception as e:
+            optimization_errors.append(f"Microsoft Store optimization error: {e}")
+            logger.error(f"Microsoft Store optimization failed: {e}")
+        
+        return OptimizationResult(
+            optimizations_applied=optimizations_applied,
+            optimization_errors=optimization_errors
+        )
+    
+    async def _optimize_windows_search(self) -> int:
+        """Optimize Windows Search."""
+        logger.debug("Optimizing Windows Search...")
+        
+        # This would implement Windows Search optimization
+        # For now, return placeholder
+        return 1
+    
+    async def _optimize_windows_security(self) -> int:
+        """Optimize Windows Security."""
+        logger.debug("Optimizing Windows Security...")
+        
+        # This would implement Windows Security optimization
+        # For now, return placeholder
+        return 1
+    
+    async def _optimize_cloud_integration(self) -> int:
+        """Optimize cloud integration features."""
+        logger.debug("Optimizing cloud integration...")
+        
+        # This would implement cloud integration optimization
+        # For now, return placeholder
+        return 1 

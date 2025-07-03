@@ -376,6 +376,9 @@ class PurrifyGUI:
         self.opt_startup_var = tk.BooleanVar(value=True)
         self.opt_memory_var = tk.BooleanVar(value=True)
         self.opt_disk_var = tk.BooleanVar(value=True)
+        self.opt_windows11_var = tk.BooleanVar(value=True)
+        self.opt_wsl_var = tk.BooleanVar(value=False)
+        self.opt_microsoft_store_var = tk.BooleanVar(value=False)
         
         tk.Checkbutton(
             options_card,
@@ -403,6 +406,37 @@ class PurrifyGUI:
             fg=self.theme.colors.text_primary,
             selectcolor=self.theme.colors.bg_secondary
         ).pack(anchor="w", padx=10, pady=5)
+        
+        # Windows 11 specific options
+        if self.engine.config.platform.get("is_windows_11", False):
+            tk.Checkbutton(
+                options_card,
+                text="🪟 Windows 11 Optimization",
+                variable=self.opt_windows11_var,
+                bg="transparent",
+                fg=self.theme.colors.text_primary,
+                selectcolor=self.theme.colors.bg_secondary
+            ).pack(anchor="w", padx=10, pady=5)
+            
+            if self.engine.config.platform.get("has_wsl", False):
+                tk.Checkbutton(
+                    options_card,
+                    text="🐧 WSL Optimization",
+                    variable=self.opt_wsl_var,
+                    bg="transparent",
+                    fg=self.theme.colors.text_primary,
+                    selectcolor=self.theme.colors.bg_secondary
+                ).pack(anchor="w", padx=10, pady=5)
+            
+            if self.engine.config.platform.get("has_microsoft_store", False):
+                tk.Checkbutton(
+                    options_card,
+                    text="🏪 Microsoft Store Optimization",
+                    variable=self.opt_microsoft_store_var,
+                    bg="transparent",
+                    fg=self.theme.colors.text_primary,
+                    selectcolor=self.theme.colors.bg_secondary
+                ).pack(anchor="w", padx=10, pady=5)
         
         # Optimize button
         self.optimize_button = AphroditeButton(
@@ -769,6 +803,9 @@ Cleaning Completed Successfully!
                     "startup": self.opt_startup_var.get(),
                     "memory": self.opt_memory_var.get(),
                     "disk": self.opt_disk_var.get(),
+                    "windows_11": self.opt_windows11_var.get(),
+                    "wsl": self.opt_wsl_var.get(),
+                    "microsoft_store": self.opt_microsoft_store_var.get(),
                 }
                 
                 # Run optimization

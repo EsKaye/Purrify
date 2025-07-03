@@ -145,10 +145,13 @@ def clean(ctx, all: bool, caches: bool, logs: bool, temp: bool, safe: bool, back
 @click.option("--startup", "-s", is_flag=True, help="Optimize startup items")
 @click.option("--memory", "-m", is_flag=True, help="Optimize memory usage")
 @click.option("--disk", "-d", is_flag=True, help="Optimize disk performance")
+@click.option("--windows11", "-w11", is_flag=True, help="Windows 11 specific optimizations")
+@click.option("--wsl", is_flag=True, help="Optimize Windows Subsystem for Linux")
+@click.option("--microsoft-store", is_flag=True, help="Optimize Microsoft Store apps")
 @click.option("--all", "-a", is_flag=True, help="Apply all optimizations")
 @click.option("--safe", is_flag=True, help="Safe mode - preview only")
 @click.pass_context
-def optimize(ctx, startup: bool, memory: bool, disk: bool, all: bool, safe: bool):
+def optimize(ctx, startup: bool, memory: bool, disk: bool, windows11: bool, wsl: bool, microsoft_store: bool, all: bool, safe: bool):
     """
     ⚡ Optimize system performance
     
@@ -162,6 +165,9 @@ def optimize(ctx, startup: bool, memory: bool, disk: bool, all: bool, safe: bool
         "startup": all or startup,
         "memory": all or memory,
         "disk": all or disk,
+        "windows_11": all or windows11,
+        "wsl": all or wsl,
+        "microsoft_store": all or microsoft_store,
     }
     
     if not any(opt_options.values()):

@@ -9,6 +9,7 @@ import os
 import sys
 import platform
 import subprocess
+import re
 from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
 from loguru import logger
@@ -120,7 +121,7 @@ def _get_windows_info() -> Dict[str, Any]:
     }
     
     try:
-        # Get Windows version
+        # Get Windows version and build
         result = subprocess.run(
             ["ver"],
             capture_output=True,
@@ -138,9 +139,43 @@ def _get_windows_info() -> Dict[str, Any]:
         )
         info["windows_build"] = result.stdout.strip()
         
+        # Detect Windows 11 specifically
+        try:
+            # Check for Windows 11 using registry
+            result = subprocess.run(
+                ["reg", "query", "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "/v", "ProductName"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            product_name = result.stdout.strip()
+            info["is_windows_11"] = "Windows 11" in product_name
+            
+            # Get Windows 11 build info
+            if info["is_windows_11"]:
+                result = subprocess.run(
+                    ["reg", "query", "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "/v", "CurrentBuild"],
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                build_match = re.search(r'CurrentBuild\s+REG_SZ\s+(\d+)', result.stdout)
+                if build_match:
+                    info["windows_11_build"] = build_match.group(1)
+                    info["is_latest_windows_11"] = int(build_match.group(1)) >= 22000
+        except subprocess.CalledProcessError:
+            info["is_windows_11"] = False
+            info["windows_11_build"] = None
+            info["is_latest_windows_11"] = False
+        
         # Get system memory info
         import psutil
         info["total_memory"] = psutil.virtual_memory().total
+        
+        # Check for Windows 11 specific features
+        info["has_wsl"] = os.path.exists("C:\\Windows\\System32\\wsl.exe")
+        info["has_windows_terminal"] = os.path.exists(os.path.expanduser("~\\AppData\\Local\\Microsoft\\WindowsTerminal"))
+        info["has_microsoft_store"] = os.path.exists("C:\\Program Files\\WindowsApps")
         
     except (subprocess.CalledProcessError, ImportError) as e:
         logger.warning(f"Failed to get Windows info: {e}")
@@ -225,41 +260,57 @@ def _get_windows_paths() -> Dict[str, List[str]]:
     local_appdata = os.environ.get("LOCALAPPDATA", f"{home}/AppData/Local")
     temp = os.environ.get("TEMP", "C:/Windows/Temp")
     
-    return {
+    # Base Windows paths
+    base_paths = {
         "system_caches": [
             "C:/Windows/Temp",
             "C:/Windows/Prefetch",
             "C:/Windows/SoftwareDistribution/Download",
-            "C:/ProgramData/Microsoft/Windows/WER"
+            "C:/ProgramData/Microsoft/Windows/WER",
+            "C:/Windows/WinSxS/Temp",  # Windows 11 component store temp
+            "C:/Windows/System32/config/systemprofile/AppData/Local/Temp"  # System temp
         ],
         "user_caches": [
             f"{local_appdata}/Temp",
             f"{local_appdata}/Microsoft/Windows/INetCache",
             f"{local_appdata}/Microsoft/Windows/WebCache",
+            f"{local_appdata}/Microsoft/Windows/History",
+            f"{local_appdata}/Microsoft/Windows/Temporary Internet Files",
+            f"{local_appdata}/Microsoft/Windows/Explorer",
+            f"{local_appdata}/Microsoft/Windows/Shell",
             f"{appdata}/Microsoft/Windows/Recent",
-            f"{appdata}/Microsoft/Windows/Recent/AutomaticDestinations"
+            f"{appdata}/Microsoft/Windows/Recent/AutomaticDestinations",
+            f"{local_appdata}/Microsoft/Windows/WER"  # User error reporting
         ],
         "application_caches": [
             f"{local_appdata}/Google/Chrome/User Data/Default/Cache",
+            f"{local_appdata}/Google/Chrome/User Data/Default/Storage",
             f"{local_appdata}/Mozilla/Firefox/Profiles",
             f"{local_appdata}/Microsoft/Edge/User Data/Default/Cache",
+            f"{local_appdata}/Microsoft/Edge/User Data/Default/Storage",
             f"{local_appdata}/Microsoft/Teams/current/Cache",
             f"{local_appdata}/Discord/Cache",
-            f"{local_appdata}/Slack/Cache"
+            f"{local_appdata}/Slack/Cache",
+            f"{local_appdata}/Microsoft/WindowsTerminal",  # Windows Terminal cache
+            f"{local_appdata}/Microsoft/Windows/INetCache/Content.IE5",  # IE cache
+            f"{local_appdata}/Microsoft/Windows/WebCache/V01"  # Web cache
         ],
         "system_logs": [
             "C:/Windows/System32/winevt/Logs",
             "C:/Windows/Logs",
-            "C:/ProgramData/Microsoft/Windows/WindowsUpdate/Log"
+            "C:/ProgramData/Microsoft/Windows/WindowsUpdate/Log",
+            "C:/Windows/System32/config/systemprofile/AppData/Local/Microsoft/Windows/INetCache/Logs"
         ],
         "temp_files": [
             temp,
             f"{local_appdata}/Temp",
-            f"{home}/AppData/Local/Temp"
+            f"{home}/AppData/Local/Temp",
+            f"{local_appdata}/Microsoft/Windows/INetCache/Temp"
         ],
         "downloads": [
             f"{home}/Downloads",
-            f"{home}/Desktop"
+            f"{home}/Desktop",
+            f"{home}/OneDrive/Downloads" if os.path.exists(f"{home}/OneDrive") else None
         ],
         "startup_items": [
             "C:/Users/All Users/Microsoft/Windows/Start Menu/Programs/Startup",
@@ -267,6 +318,45 @@ def _get_windows_paths() -> Dict[str, List[str]]:
             "C:/Windows/System32/config/systemprofile/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup"
         ]
     }
+    
+    # Windows 11 specific paths
+    windows_11_paths = {
+        "wsl_caches": [
+            f"{local_appdata}/Packages/CanonicalGroupLimited.UbuntuonWindows_79rhkp1fndgsc",
+            f"{local_appdata}/Packages/TheDebianProject.DebianGNULinux_76v4gfsz19hv4",
+            f"{local_appdata}/Packages/OpenMediaVault.WSL_1.0.0.0_x64__q4m6cd70nt8jt"
+        ],
+        "microsoft_store_caches": [
+            "C:/Program Files/WindowsApps",
+            f"{local_appdata}/Packages",
+            f"{local_appdata}/Microsoft/Windows/INetCache/Packages"
+        ],
+        "windows_security_caches": [
+            f"{local_appdata}/Microsoft/Windows Defender",
+            f"{local_appdata}/Microsoft/Windows Defender Advanced Threat Protection",
+            "C:/ProgramData/Microsoft/Windows Defender/Scans/History"
+        ],
+        "windows_search_caches": [
+            f"{local_appdata}/Microsoft/Search/Data/Applications/Windows",
+            f"{local_appdata}/Microsoft/Windows/Search/Data/Applications/Windows"
+        ],
+        "cloud_integration_caches": [
+            f"{local_appdata}/Microsoft/OneDrive",
+            f"{local_appdata}/Microsoft/Teams",
+            f"{local_appdata}/Microsoft/Office",
+            f"{local_appdata}/Microsoft/Outlook"
+        ]
+    }
+    
+    # Combine base paths with Windows 11 specific paths
+    all_paths = base_paths.copy()
+    all_paths.update(windows_11_paths)
+    
+    # Remove None values
+    for category, paths in all_paths.items():
+        all_paths[category] = [path for path in paths if path is not None]
+    
+    return all_paths
 
 
 def get_browser_paths() -> Dict[str, List[str]]:
@@ -308,19 +398,42 @@ def get_browser_paths() -> Dict[str, List[str]]:
             "chrome": [
                 f"{local_appdata}/Google/Chrome/User Data/Default",
                 f"{local_appdata}/Google/Chrome/User Data/Default/Cache",
-                f"{local_appdata}/Google/Chrome/User Data/Default/Storage"
+                f"{local_appdata}/Google/Chrome/User Data/Default/Storage",
+                f"{local_appdata}/Google/Chrome/User Data/Default/Code Cache",
+                f"{local_appdata}/Google/Chrome/User Data/Default/GPUCache"
             ],
             "firefox": [
                 f"{appdata}/Mozilla/Firefox/Profiles",
-                f"{local_appdata}/Mozilla/Firefox/Profiles"
+                f"{local_appdata}/Mozilla/Firefox/Profiles",
+                f"{local_appdata}/Mozilla/Firefox/Profiles/*/cache2",
+                f"{local_appdata}/Mozilla/Firefox/Profiles/*/storage"
             ],
             "edge": [
                 f"{local_appdata}/Microsoft/Edge/User Data/Default",
-                f"{local_appdata}/Microsoft/Edge/User Data/Default/Cache"
+                f"{local_appdata}/Microsoft/Edge/User Data/Default/Cache",
+                f"{local_appdata}/Microsoft/Edge/User Data/Default/Storage",
+                f"{local_appdata}/Microsoft/Edge/User Data/Default/Code Cache",
+                f"{local_appdata}/Microsoft/Edge/User Data/Default/GPUCache"
             ],
             "ie": [
                 f"{local_appdata}/Microsoft/Windows/INetCache",
-                f"{local_appdata}/Microsoft/Windows/WebCache"
+                f"{local_appdata}/Microsoft/Windows/WebCache",
+                f"{local_appdata}/Microsoft/Windows/INetCache/Content.IE5"
+            ],
+            "opera": [
+                f"{local_appdata}/Opera Software/Opera Stable",
+                f"{local_appdata}/Opera Software/Opera Stable/Cache",
+                f"{local_appdata}/Opera Software/Opera Stable/Storage"
+            ],
+            "brave": [
+                f"{local_appdata}/BraveSoftware/Brave-Browser/User Data/Default",
+                f"{local_appdata}/BraveSoftware/Brave-Browser/User Data/Default/Cache",
+                f"{local_appdata}/BraveSoftware/Brave-Browser/User Data/Default/Storage"
+            ],
+            "vivaldi": [
+                f"{local_appdata}/Vivaldi/User Data/Default",
+                f"{local_appdata}/Vivaldi/User Data/Default/Cache",
+                f"{local_appdata}/Vivaldi/User Data/Default/Storage"
             ]
         }
     else:
