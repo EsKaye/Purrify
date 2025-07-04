@@ -338,8 +338,9 @@ class Config:
         self.optimization.launch_agents_optimization = False
         
         # Windows 11 specific settings
-        if hasattr(self, 'platform') and self.platform.get("is_windows_11", False):
-            self._apply_windows_11_settings()
+        # Note: platform detection is handled separately in the engine
+        # Windows 11 optimizations are enabled by default for Windows
+        self._apply_windows_11_settings()
         
         logger.info("Applied Windows-specific configuration")
     

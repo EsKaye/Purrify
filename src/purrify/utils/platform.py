@@ -3,6 +3,27 @@ Purrify Platform Utilities
 
 This module provides platform detection and utility functions for
 cross-platform compatibility between macOS and Windows.
+
+The platform utilities provide:
+- Comprehensive platform detection and information gathering
+- Cross-platform path mapping and system directory discovery
+- Browser cache and data path detection
+- System permission and access validation
+- Disk usage and memory information gathering
+- Platform-specific optimization and safety features
+
+Functions:
+    detect_platform: Detect current platform with detailed information
+    get_system_paths: Get platform-specific system paths for scanning
+    get_browser_paths: Get browser cache and data paths
+    check_permissions: Check file system permissions for paths
+    get_disk_usage: Get disk usage information
+    get_memory_info: Get memory usage information
+    is_admin: Check if running with administrative privileges
+
+Author: Purrify Team
+Version: 2.0.0
+License: MIT
 """
 
 import os
@@ -19,8 +40,32 @@ def detect_platform() -> Dict[str, Any]:
     """
     Detect the current platform and return detailed information.
     
+    This function provides comprehensive platform detection including
+    system type, version, architecture, and platform-specific features.
+    It supports macOS and Windows with detailed version information
+    and feature detection.
+    
     Returns:
-        Dictionary containing platform information
+        Dictionary containing comprehensive platform information:
+        - system: Operating system name (darwin, windows, linux)
+        - platform_type: Human-readable platform name
+        - release: OS release version
+        - version: OS version string
+        - machine: Machine architecture
+        - processor: Processor information
+        - python_version: Python version string
+        - architecture: System architecture (32bit, 64bit)
+        - is_64bit: Whether system is 64-bit
+        - supported: Whether platform is supported
+        - Platform-specific fields (macos_version, windows_11_build, etc.)
+        
+    Raises:
+        RuntimeError: If platform detection fails completely
+        
+    Example:
+        >>> platform_info = detect_platform()
+        >>> print(f"Platform: {platform_info['platform_type']}")
+        >>> print(f"Architecture: {platform_info['architecture']}")
     """
     system = platform.system().lower()
     release = platform.release()
@@ -114,71 +159,70 @@ def _get_macos_info() -> Dict[str, Any]:
 
 
 def _get_windows_info() -> Dict[str, Any]:
-    """Get Windows-specific system information."""
+    """
+    Get Windows-specific system information.
+    
+    This function provides comprehensive Windows system information
+    using platform detection and file system checks rather than
+    external commands that may not be available.
+    """
     info = {
         "platform_type": "Windows",
         "supported": True
     }
     
     try:
-        # Get Windows version and build
-        result = subprocess.run(
-            ["ver"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        info["windows_version"] = result.stdout.strip()
+        # Use platform module for basic version info
+        info["windows_version"] = platform.version()
+        info["windows_build"] = platform.release()
         
-        # Get Windows build number
-        result = subprocess.run(
-            ["cmd", "/c", "echo %OSVERSION%"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        info["windows_build"] = result.stdout.strip()
-        
-        # Detect Windows 11 specifically
+        # Detect Windows 11 using platform version
+        # Windows 11 typically has build number >= 22000
         try:
-            # Check for Windows 11 using registry
-            result = subprocess.run(
-                ["reg", "query", "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "/v", "ProductName"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            product_name = result.stdout.strip()
-            info["is_windows_11"] = "Windows 11" in product_name
-            
-            # Get Windows 11 build info
+            build_number = int(platform.release())
+            info["is_windows_11"] = build_number >= 22000
             if info["is_windows_11"]:
-                result = subprocess.run(
-                    ["reg", "query", "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "/v", "CurrentBuild"],
-                    capture_output=True,
-                    text=True,
-                    check=True
-                )
-                build_match = re.search(r'CurrentBuild\s+REG_SZ\s+(\d+)', result.stdout)
-                if build_match:
-                    info["windows_11_build"] = build_match.group(1)
-                    info["is_latest_windows_11"] = int(build_match.group(1)) >= 22000
-        except subprocess.CalledProcessError:
-            info["is_windows_11"] = False
+                info["windows_11_build"] = str(build_number)
+                info["is_latest_windows_11"] = build_number >= 22000
+            else:
+                info["is_windows_11"] = False
+                info["windows_11_build"] = None
+                info["is_latest_windows_11"] = False
+        except (ValueError, TypeError):
+            # Fallback: check for Windows 11 specific features
+            info["is_windows_11"] = os.path.exists("C:\\Windows\\System32\\wsl.exe")
             info["windows_11_build"] = None
             info["is_latest_windows_11"] = False
         
         # Get system memory info
-        import psutil
-        info["total_memory"] = psutil.virtual_memory().total
+        try:
+            import psutil
+            info["total_memory"] = psutil.virtual_memory().total
+        except ImportError:
+            info["total_memory"] = 0
+            logger.warning("psutil not available, memory info unavailable")
         
         # Check for Windows 11 specific features
         info["has_wsl"] = os.path.exists("C:\\Windows\\System32\\wsl.exe")
         info["has_windows_terminal"] = os.path.exists(os.path.expanduser("~\\AppData\\Local\\Microsoft\\WindowsTerminal"))
         info["has_microsoft_store"] = os.path.exists("C:\\Program Files\\WindowsApps")
         
-    except (subprocess.CalledProcessError, ImportError) as e:
+        logger.info(f"Windows platform info gathered successfully")
+        
+    except Exception as e:
         logger.warning(f"Failed to get Windows info: {e}")
+        # Provide fallback information
+        info.update({
+            "windows_version": "Unknown",
+            "windows_build": "Unknown",
+            "is_windows_11": False,
+            "windows_11_build": None,
+            "is_latest_windows_11": False,
+            "total_memory": 0,
+            "has_wsl": False,
+            "has_windows_terminal": False,
+            "has_microsoft_store": False
+        })
     
     return info
 

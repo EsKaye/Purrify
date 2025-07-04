@@ -3,6 +3,24 @@ Purrify System Scanner
 
 This module provides comprehensive system scanning capabilities for
 detecting cache files, temporary files, duplicates, photos, and optimization opportunities.
+
+The scanner provides:
+- Enhanced file discovery and categorization
+- Duplicate file detection using MD5 hashing
+- Photo analysis for compression opportunities
+- Large file identification and analysis
+- Cross-platform path detection and scanning
+- Real-time progress tracking and error handling
+
+Classes:
+    FileInfo: Information about individual files found during scanning
+    DuplicateGroup: Group of duplicate files with analysis
+    PhotoAnalysis: Photo analysis results with optimization data
+    SystemScanner: Main scanner class with comprehensive capabilities
+
+Author: Purrify Team
+Version: 2.0.0
+License: MIT
 """
 
 import asyncio
@@ -24,7 +42,26 @@ from ..core.logger import log_async_function_call
 
 @dataclass
 class FileInfo:
-    """Information about a file found during scanning."""
+    """
+    Information about a file found during scanning.
+    
+    This dataclass contains comprehensive information about individual files
+    discovered during system scanning, including metadata, categorization,
+    and analysis results.
+    
+    Attributes:
+        path: Full file path
+        size: File size in bytes
+        modified: Last modification timestamp
+        file_type: File type/extension
+        category: File category (cache, temp, log, etc.)
+        safe_to_delete: Whether file is safe to delete
+        risk_level: Risk level for deletion (low, medium, high)
+        hash: MD5 hash for duplicate detection
+        duplicate_group: Group identifier for duplicate files
+        photo_metadata: Photo-specific metadata and analysis
+        compression_potential: Potential compression savings in bytes
+    """
     path: str
     size: int
     modified: float
@@ -40,7 +77,20 @@ class FileInfo:
 
 @dataclass
 class DuplicateGroup:
-    """Group of duplicate files."""
+    """
+    Group of duplicate files with analysis.
+    
+    This dataclass represents a group of files that are identical
+    based on MD5 hash comparison, including analysis of potential
+    space savings and file characteristics.
+    
+    Attributes:
+        hash: MD5 hash that identifies this duplicate group
+        files: List of FileInfo objects in this group
+        total_size: Total size of all files in the group
+        potential_savings: Potential space savings if duplicates removed
+        file_type: Common file type for files in this group
+    """
     hash: str
     files: List[FileInfo]
     total_size: int
@@ -50,7 +100,22 @@ class DuplicateGroup:
 
 @dataclass
 class PhotoAnalysis:
-    """Photo analysis results."""
+    """
+    Photo analysis results with optimization data.
+    
+    This dataclass contains detailed analysis of photo files including
+    resolution, format, compression potential, and quality assessment
+    for optimization recommendations.
+    
+    Attributes:
+        path: Full path to the photo file
+        size: File size in bytes
+        resolution: Image resolution as (width, height) tuple
+        format: Image format (JPEG, PNG, etc.)
+        compression_ratio: Potential compression ratio
+        quality_score: Image quality score (0-100)
+        duplicate_of: Path to duplicate photo if found
+    """
     path: str
     size: int
     resolution: Optional[Tuple[int, int]]
