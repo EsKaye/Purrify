@@ -5,7 +5,7 @@ A cross-platform system optimization tool that uses AI to clean caches,
 optimize files, and improve system performance on macOS and Windows.
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __author__ = "Purrify Team"
 __email__ = "team@purrify.app"
 __description__ = "AI-Driven System Optimization Utility for macOS and Windows"

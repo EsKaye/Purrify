@@ -23,7 +23,7 @@ from purrify.utils.cli_utils import print_banner, print_system_info
 
 
 @click.group()
-@click.version_option(version="1.0.0", prog_name="Purrify")
+@click.version_option(version="2.0.0", prog_name="Purrify")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.option("--config", "-c", type=click.Path(exists=True), help="Path to config file")
 @click.pass_context
