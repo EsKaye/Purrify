@@ -111,6 +111,18 @@ class SecurityConfig:
     validate_file_signatures: bool = True
 
 
+@dataclass
+class LoggingConfig:
+    """Logging configuration settings."""
+    verbose: bool = False
+    log_level: str = "INFO"
+    log_file: str = "logs/purrify.log"
+    max_log_size: str = "10MB"
+    log_retention: int = 7  # days
+    enable_console_logging: bool = True
+    enable_file_logging: bool = True
+
+
 class Config:
     """
     Main configuration class for Purrify.
@@ -136,6 +148,7 @@ class Config:
         self.optimization = OptimizationConfig()
         self.ai = AIConfig()
         self.security = SecurityConfig()
+        self.logging = LoggingConfig()
         
         # Load configuration
         self._load_config()
@@ -181,6 +194,7 @@ class Config:
             self._update_section(self.optimization, config_data.get('optimization', {}))
             self._update_section(self.ai, config_data.get('ai', {}))
             self._update_section(self.security, config_data.get('security', {}))
+            self._update_section(self.logging, config_data.get('logging', {}))
             
             logger.info("Configuration loaded successfully")
             

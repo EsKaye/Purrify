@@ -201,65 +201,59 @@ class SystemScanner:
         scan_start = time.time()
         
         try:
-            # Basic scans
-            scan_tasks = []
+            # Enhanced scanning phases
+            await self._scan_system_caches()
             
-            if self.config.scanning.include_system_caches:
-                scan_tasks.append(self._scan_system_caches())
+            # Windows 11 specific scanning
+            if self.config.platform == "windows":
+                await self._scan_windows_11_caches()
             
-            if self.config.scanning.include_user_caches:
-                scan_tasks.append(self._scan_user_caches())
+            await self._scan_user_caches()
+            await self._scan_application_caches()
+            await self._scan_browser_caches()
+            await self._scan_logs()
+            await self._scan_temp_files()
             
-            if self.config.scanning.include_application_caches:
-                scan_tasks.append(self._scan_application_caches())
-            
-            if self.config.scanning.include_browser_caches:
-                scan_tasks.append(self._scan_browser_caches())
-            
-            if self.config.scanning.include_logs:
-                scan_tasks.append(self._scan_logs())
-            
-            if self.config.scanning.include_temp_files:
-                scan_tasks.append(self._scan_temp_files())
-            
-            # Enhanced scans
-            if include_duplicates and not quick_mode:
-                scan_tasks.append(self._scan_for_duplicates())
-            
-            if include_photos and not quick_mode:
-                scan_tasks.append(self._scan_photos())
-            
-            if include_large_files:
-                scan_tasks.append(self._scan_large_files())
-            
-            if not quick_mode:
-                scan_tasks.append(self._scan_old_files())
-            
-            # Run scans concurrently
-            await asyncio.gather(*scan_tasks, return_exceptions=True)
-            
-            # Post-process results
-            if include_duplicates and not quick_mode:
+            # Enhanced duplicate scanning
+            if include_duplicates:
+                await self._scan_for_duplicates()
+                await self._scan_user_directories_for_duplicates()
+                await self._scan_program_installations_for_duplicates()
                 await self._analyze_duplicates()
             
-            if include_photos and not quick_mode:
+            # Enhanced photo analysis
+            if include_photos:
+                await self._scan_photos()
                 await self._analyze_photos()
             
-            # Calculate results
+            # Enhanced large file detection
+            if include_large_files:
+                await self._scan_large_files()
+                await self._scan_user_directories_for_large_files()
+                await self._scan_program_installations_for_large_files()
+            
+            # New scanning phases
+            await self._scan_login_patterns()
+            await self._scan_most_used_files()
+            await self._scan_user_directories()
+            await self._scan_program_installations()
+            await self._scan_critical_machine_files()
+            await self._scan_startup_and_services()
+            
             scan_duration = time.time() - scan_start
+            
+            # Calculate enhanced results
             results = self._calculate_enhanced_scan_results(scan_duration)
             
             logger.info(f"Enhanced system scan completed in {scan_duration:.2f}s")
-            logger.info(f"Found {len(self.scanned_files)} files")
-            logger.info(f"Found {len(self.duplicate_groups)} duplicate groups")
-            logger.info(f"Analyzed {len(self.photo_analysis)} photos")
+            logger.info(f"Scanned {len(self.scanned_files):,} files")
             
             return results
             
         except Exception as e:
             logger.error(f"Enhanced system scan failed: {e}")
-            self.scan_errors.append(str(e))
-            return self._create_error_result(str(e), time.time() - scan_start)
+            scan_duration = time.time() - scan_start
+            return self._create_error_result(str(e), scan_duration)
     
     async def _scan_system_caches(self):
         """Scan system cache directories."""
@@ -280,7 +274,7 @@ class SystemScanner:
                 self.scan_errors.append(error_msg)
         
         # Windows 11 specific cache scanning
-        if self.platform.get("is_windows_11", False):
+        if self.platform == "windows":
             await self._scan_windows_11_caches()
     
     async def _scan_windows_11_caches(self):
@@ -795,6 +789,14 @@ class SystemScanner:
         
         total_potential_savings = cache_savings + duplicate_savings + photo_savings
         
+        # Enhanced metrics for new scanning categories
+        login_patterns = categories.get("login_patterns", [])
+        most_used_files = categories.get("most_used_files", [])
+        user_directories = categories.get("user_directories", [])
+        program_installations = categories.get("program_installations", [])
+        critical_machine_files = categories.get("critical_machine_files", [])
+        startup_and_services = categories.get("startup_and_services", [])
+        
         return {
             "success": True,
             "scan_duration": scan_duration,
@@ -863,6 +865,37 @@ class SystemScanner:
                     }
                     for f in self.old_files[:10]  # First 10 old files
                 ]
+            },
+            # Enhanced scanning results
+            "login_patterns": {
+                "count": len(login_patterns),
+                "size": sum(f.size for f in login_patterns),
+                "files": [f.path for f in login_patterns[:10]]
+            },
+            "most_used_files": {
+                "count": len(most_used_files),
+                "size": sum(f.size for f in most_used_files),
+                "files": [f.path for f in most_used_files[:10]]
+            },
+            "user_directories": {
+                "count": len(user_directories),
+                "size": sum(f.size for f in user_directories),
+                "files": [f.path for f in user_directories[:10]]
+            },
+            "program_installations": {
+                "count": len(program_installations),
+                "size": sum(f.size for f in program_installations),
+                "files": [f.path for f in program_installations[:10]]
+            },
+            "critical_machine_files": {
+                "count": len(critical_machine_files),
+                "size": sum(f.size for f in critical_machine_files),
+                "files": [f.path for f in critical_machine_files[:10]]
+            },
+            "startup_and_services": {
+                "count": len(startup_and_services),
+                "size": sum(f.size for f in startup_and_services),
+                "files": [f.path for f in startup_and_services[:10]]
             },
             "errors": self.scan_errors
         }
@@ -1163,3 +1196,278 @@ class SystemScanner:
             
         except (PermissionError, OSError):
             return None 
+
+    async def _scan_login_patterns(self):
+        """Scan for login patterns and user session data."""
+        logger.debug("Scanning login patterns and user sessions...")
+        
+        login_paths = []
+        if self.config.platform == "windows":
+            login_paths = [
+                os.path.expanduser("~/AppData/Local/Microsoft/Windows/INetCache"),
+                os.path.expanduser("~/AppData/Local/Microsoft/Windows/History"),
+                os.path.expanduser("~/AppData/Roaming/Microsoft/Windows/Recent"),
+                "C:/Windows/System32/config/systemprofile/AppData/Local/Microsoft/Windows/INetCache",
+                "C:/Windows/System32/config/systemprofile/AppData/Local/Microsoft/Windows/History"
+            ]
+        else:  # macOS
+            login_paths = [
+                os.path.expanduser("~/Library/Safari/History.db"),
+                os.path.expanduser("~/Library/Application Support/Google/Chrome/Default/History"),
+                os.path.expanduser("~/Library/Application Support/Firefox/Profiles"),
+                os.path.expanduser("~/Library/Caches/com.apple.Safari"),
+                os.path.expanduser("~/Library/Logs/DiagnosticReports")
+            ]
+        
+        for path in login_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory(
+                        path=path,
+                        category="login_patterns",
+                        max_depth=3 if not self.config.scanning.quick_mode else 1
+                    )
+                except Exception as e:
+                    error_msg = f"Failed to scan login patterns {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg)
+    
+    async def _scan_most_used_files(self):
+        """Scan for most frequently used files and directories."""
+        logger.debug("Scanning most used files...")
+        
+        most_used_paths = [
+            os.path.expanduser("~/Desktop"),
+            os.path.expanduser("~/Documents"),
+            os.path.expanduser("~/Downloads"),
+            os.path.expanduser("~/Pictures"),
+            os.path.expanduser("~/Music"),
+            os.path.expanduser("~/Videos"),
+            os.path.expanduser("~/AppData/Local/Microsoft/Windows/Explorer"),
+            os.path.expanduser("~/AppData/Roaming/Microsoft/Windows/Recent")
+        ]
+        
+        for path in most_used_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory(
+                        path=path,
+                        category="most_used_files",
+                        max_depth=4 if not self.config.scanning.quick_mode else 2
+                    )
+                except Exception as e:
+                    error_msg = f"Failed to scan most used files {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg)
+    
+    async def _scan_user_directories(self):
+        """Scan user directories for optimization opportunities."""
+        logger.debug("Scanning user directories...")
+        
+        user_paths = [
+            os.path.expanduser("~"),
+            os.path.expanduser("~/AppData"),
+            os.path.expanduser("~/AppData/Local"),
+            os.path.expanduser("~/AppData/Roaming"),
+            os.path.expanduser("~/AppData/LocalLow")
+        ]
+        
+        for path in user_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory(
+                        path=path,
+                        category="user_directories",
+                        max_depth=5 if not self.config.scanning.quick_mode else 3
+                    )
+                except Exception as e:
+                    error_msg = f"Failed to scan user directory {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg)
+    
+    async def _scan_program_installations(self):
+        """Scan program installation directories."""
+        logger.debug("Scanning program installations...")
+        
+        program_paths = []
+        if self.config.platform == "windows":
+            program_paths = [
+                "C:/Program Files",
+                "C:/Program Files (x86)",
+                "C:/ProgramData",
+                os.path.expanduser("~/AppData/Local/Programs"),
+                os.path.expanduser("~/AppData/Roaming/Microsoft/Windows/Start Menu/Programs")
+            ]
+        else:  # macOS
+            program_paths = [
+                "/Applications",
+                os.path.expanduser("~/Applications"),
+                "/Library/Application Support",
+                os.path.expanduser("~/Library/Application Support")
+            ]
+        
+        for path in program_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory(
+                        path=path,
+                        category="program_installations",
+                        max_depth=3 if not self.config.scanning.quick_mode else 1
+                    )
+                except Exception as e:
+                    error_msg = f"Failed to scan program installations {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg)
+    
+    async def _scan_critical_machine_files(self):
+        """Scan critical machine files and system directories."""
+        logger.debug("Scanning critical machine files...")
+        
+        critical_paths = []
+        if self.config.platform == "windows":
+            critical_paths = [
+                "C:/Windows/System32",
+                "C:/Windows/SysWOW64",
+                "C:/Windows/WinSxS",
+                "C:/Windows/Logs",
+                "C:/Windows/System32/winevt/Logs",
+                "C:/ProgramData/Microsoft/Windows/WER",
+                "C:/ProgramData/Microsoft/Windows/WindowsUpdate/Log"
+            ]
+        else:  # macOS
+            critical_paths = [
+                "/System/Library",
+                "/Library/Logs",
+                "/var/log",
+                "/private/var/log"
+            ]
+        
+        for path in critical_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory(
+                        path=path,
+                        category="critical_machine_files",
+                        max_depth=3 if not self.config.scanning.quick_mode else 1
+                    )
+                except Exception as e:
+                    error_msg = f"Failed to scan critical machine files {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg)
+    
+    async def _scan_startup_and_services(self):
+        """Scan startup items and services."""
+        logger.debug("Scanning startup items and services...")
+        
+        startup_paths = []
+        if self.config.platform == "windows":
+            startup_paths = [
+                "C:/Users/All Users/Microsoft/Windows/Start Menu/Programs/Startup",
+                os.path.expanduser("~/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup"),
+                "C:/Windows/System32/config/systemprofile/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup"
+            ]
+        else:  # macOS
+            startup_paths = [
+                os.path.expanduser("~/Library/LaunchAgents"),
+                "/Library/LaunchAgents",
+                "/Library/LaunchDaemons",
+                "/System/Library/LaunchAgents",
+                "/System/Library/LaunchDaemons"
+            ]
+        
+        for path in startup_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory(
+                        path=path,
+                        category="startup_and_services",
+                        max_depth=2 if not self.config.scanning.quick_mode else 1
+                    )
+                except Exception as e:
+                    error_msg = f"Failed to scan startup and services {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg)
+    
+    async def _scan_user_directories_for_duplicates(self):
+        """Scan user directories specifically for duplicate files."""
+        logger.debug("Scanning user directories for duplicates...")
+        
+        user_duplicate_paths = [
+            os.path.expanduser("~/Desktop"),
+            os.path.expanduser("~/Documents"),
+            os.path.expanduser("~/Downloads"),
+            os.path.expanduser("~/Pictures"),
+            os.path.expanduser("~/Music"),
+            os.path.expanduser("~/Videos"),
+            os.path.expanduser("~/OneDrive")
+        ]
+        
+        for path in user_duplicate_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory_for_duplicates(path, max_depth=6)
+                except Exception as e:
+                    error_msg = f"Failed to scan user directories for duplicates in {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg)
+    
+    async def _scan_program_installations_for_duplicates(self):
+        """Scan program installations for duplicate files."""
+        logger.debug("Scanning program installations for duplicates...")
+        
+        program_duplicate_paths = [
+            "C:/Program Files",
+            "C:/Program Files (x86)",
+            os.path.expanduser("~/AppData/Local/Programs")
+        ]
+        
+        for path in program_duplicate_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory_for_duplicates(path, max_depth=4)
+                except Exception as e:
+                    error_msg = f"Failed to scan program installations for duplicates in {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg)
+    
+    async def _scan_user_directories_for_large_files(self):
+        """Scan user directories for large files."""
+        logger.debug("Scanning user directories for large files...")
+        
+        user_large_paths = [
+            os.path.expanduser("~/Desktop"),
+            os.path.expanduser("~/Documents"),
+            os.path.expanduser("~/Downloads"),
+            os.path.expanduser("~/Pictures"),
+            os.path.expanduser("~/Music"),
+            os.path.expanduser("~/Videos"),
+            os.path.expanduser("~/OneDrive")
+        ]
+        
+        for path in user_large_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory_for_large_files(path, max_depth=5)
+                except Exception as e:
+                    error_msg = f"Failed to scan user directories for large files in {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg)
+    
+    async def _scan_program_installations_for_large_files(self):
+        """Scan program installations for large files."""
+        logger.debug("Scanning program installations for large files...")
+        
+        program_large_paths = [
+            "C:/Program Files",
+            "C:/Program Files (x86)",
+            os.path.expanduser("~/AppData/Local/Programs")
+        ]
+        
+        for path in program_large_paths:
+            if os.path.exists(path):
+                try:
+                    await self._scan_directory_for_large_files(path, max_depth=3)
+                except Exception as e:
+                    error_msg = f"Failed to scan program installations for large files in {path}: {e}"
+                    logger.warning(error_msg)
+                    self.scan_errors.append(error_msg) 

@@ -92,18 +92,18 @@ class PerformanceOptimizer:
                 optimization_errors.extend(result.optimization_errors)
             
             # Windows 11 specific optimizations
-            if self.config.platform.get("is_windows_11", False):
+            if self.config.platform == "windows":
                 if optimization_options.get("windows_11", False):
                     result = await self._optimize_windows_11(safe_mode)
                     optimizations_applied += result.optimizations_applied
                     optimization_errors.extend(result.optimization_errors)
                 
-                if optimization_options.get("wsl", False) and self.config.platform.get("has_wsl", False):
+                if optimization_options.get("wsl", False):
                     result = await self._optimize_wsl(safe_mode)
                     optimizations_applied += result.optimizations_applied
                     optimization_errors.extend(result.optimization_errors)
                 
-                if optimization_options.get("microsoft_store", False) and self.config.platform.get("has_microsoft_store", False):
+                if optimization_options.get("microsoft_store", False):
                     result = await self._optimize_microsoft_store(safe_mode)
                     optimizations_applied += result.optimizations_applied
                     optimization_errors.extend(result.optimization_errors)
