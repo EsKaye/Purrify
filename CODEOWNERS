@@ -1,0 +1,21 @@
+# Code owners for Purrify
+# This file defines who is responsible for different parts of the codebase
+
+# Global owners
+* @EsKaye
+
+# Python files
+*.py @EsKaye
+
+# Configuration files
+*.toml @EsKaye
+*.cfg @EsKaye
+*.ini @EsKaye
+requirements*.txt @EsKaye
+
+# Documentation
+*.md @EsKaye
+docs/ @EsKaye
+
+# GitHub workflows
+.github/ @EsKaye
